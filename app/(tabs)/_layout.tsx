@@ -23,15 +23,14 @@ export default function Layout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {userToken ? (
-        // HomeScreen is registered as "index"
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+      {/* {userToken ? (
+        // If the user is logged in, show the Home screen
+        <Stack.Screen name="index" />
       ) : (
-        <>
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="signup" options={{ headerShown: false }} />
-        </>
-      )}
+        // If the user is not logged in, show the Login screen
+        <Stack.Screen name="login" />
+      )} */}
+      <Stack.Screen name="login" />
     </Stack>
   );
 }

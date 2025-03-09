@@ -13,10 +13,9 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-
-const { USER_EMAIL, USER_PASSWORD } = Constants.expoConfig?.extra || {};
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../firebase"; // Import Firebase auth
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,16 +23,23 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (!USER_EMAIL || !USER_PASSWORD) {
-      Alert.alert("Error", "Login system not configured properly.");
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password.");
       return;
     }
 
-    if (email === USER_EMAIL && password === USER_PASSWORD) {
-      await AsyncStorage.setItem("userToken", "dummyToken");
-      router.replace("/");
-    } else {
-      Alert.alert("Login Failed", "Invalid email or password.");
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      await AsyncStorage.setItem("userToken", user.uid); // Store user ID locally
+      router.replace("/homepage"); // Redirect to Home screen
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message);
     }
   };
 
@@ -47,7 +53,6 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo Image */}
           <View style={styles.logoContainer}>
             <Image
               source={require("@/assets/images/smarttoll-logo.png")}
@@ -55,7 +60,6 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* White Container Card */}
           <View style={styles.cardContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -78,7 +82,6 @@ export default function LoginScreen() {
               onChangeText={setPassword}
             />
 
-            {/* Login Button */}
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleLogin}
@@ -86,7 +89,6 @@ export default function LoginScreen() {
               <Text style={styles.primaryButtonText}>Log In</Text>
             </TouchableOpacity>
 
-            {/* Sign Up Button */}
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => router.push("/signup")}
@@ -94,7 +96,6 @@ export default function LoginScreen() {
               <Text style={styles.secondaryButtonText}>Sign Up</Text>
             </TouchableOpacity>
 
-            {/* Forgot Password */}
             <TouchableOpacity>
               <Text style={styles.forgotPassword}>Forgot password?</Text>
             </TouchableOpacity>

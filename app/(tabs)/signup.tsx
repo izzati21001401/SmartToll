@@ -12,14 +12,18 @@ import {
   Platform,
   Modal,
   Animated,
+  ErrorHandlerCallback,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
-const { USER_EMAIL, USER_PASSWORD } = Constants.expoConfig?.extra || {};
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -28,39 +32,40 @@ export default function SignupScreen() {
   const [password, setPassword] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const auth = getAuth();
 
   const handleSignup = async () => {
     if (!email || !password || !name) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
-
-    setModalVisible(true);
-
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-
-    // Simulate saving user data
-    await AsyncStorage.setItem("userEmail", email);
-
-    // Auto-close notification after 2 seconds and redirect
-    setTimeout(() => {
-      setModalVisible(false);
-      router.replace("/login");
-    }, 2000);
-  };
   
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      await updateProfile(userCredential.user, { displayName: name });
+      await AsyncStorage.setItem("userEmail", email);
+  
+      // Show the modal only on successful signup
+      setModalVisible(true);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+  
+      // Redirect to login after a delay
+      setTimeout(() => {
+        setModalVisible(false);
+        router.replace("/login");
+      }, 2000);
+    } catch (error:any) {
+      Alert.alert("Signup Failed", error.message);
+    }
+  };
   return (
     <LinearGradient colors={["#FFFFFF", "#4788C7"]} style={styles.container}>
       <KeyboardAvoidingView
@@ -71,15 +76,12 @@ export default function SignupScreen() {
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo Image */}
           <View style={styles.logoContainer}>
             <Image
               source={require("@/assets/images/smarttoll-logo.png")}
               style={styles.logo}
             />
           </View>
-
-          {/* White Container Card */}
           <View style={styles.cardContainer}>
             <Text style={styles.label}>Name</Text>
             <TextInput
@@ -90,7 +92,6 @@ export default function SignupScreen() {
               value={name}
               onChangeText={setName}
             />
-
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
@@ -101,7 +102,6 @@ export default function SignupScreen() {
               value={email}
               onChangeText={setEmail}
             />
-
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
@@ -111,13 +111,12 @@ export default function SignupScreen() {
               value={password}
               onChangeText={setPassword}
             />
-
-            {/* Sign Up Button */}
-            <TouchableOpacity style={styles.primaryButton} onPress={handleSignup}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleSignup}
+            >
               <Text style={styles.primaryButtonText}>Sign Up</Text>
             </TouchableOpacity>
-
-            {/* Login Link */}
             <TouchableOpacity onPress={() => router.push("/login")}>
               <Text style={styles.forgotPassword}>
                 Already have an account? Login
@@ -126,19 +125,17 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Signup Success Notification Modal */}
       <Modal transparent={true} visible={modalVisible} animationType="fade">
         <View style={styles.overlay}>
-        <Animated.View style={[styles.notification, { opacity: fadeAnim }]}>
-        <Ionicons name="alert-circle-outline" size={20} color="green" />
+          <Animated.View style={[styles.notification, { opacity: fadeAnim }]}>
+            <Ionicons name="alert-circle-outline" size={20} color="green" />
             <View style={styles.textContainer}>
               <Text style={styles.title}>Signup Successful!</Text>
               <Text style={styles.subtitle}>
                 You will be redirected to the login page.
               </Text>
             </View>
-            </Animated.View>
+          </Animated.View>
         </View>
       </Modal>
     </LinearGradient>
@@ -247,11 +244,5 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: "#1E1E1E",
-  },
-  icon: {
-    width: 20,
-    height: 20,
-    marginRight: 8,
-    resizeMode: "contain",
   },
 });
