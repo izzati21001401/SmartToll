@@ -1,6 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, TextInput, Image, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+
 
 const Homepage = () => {
   return (
@@ -28,7 +30,7 @@ const Homepage = () => {
           <Text style={styles.walletLabel}>e-Wallet Balance</Text>
           </View>
           <Text style={styles.walletAmount}>RM25.80</Text>
-          <TouchableOpacity style={styles.reloadButton}>
+          <TouchableOpacity style={styles.reloadButton} onPress={() => router.push("/reload-card")}>
             <Ionicons name="add-circle-outline" size={18} color="#fff" />
             <Text style={styles.reloadText}> RELOAD </Text>
           </TouchableOpacity>
@@ -57,10 +59,13 @@ const Homepage = () => {
         <TouchableOpacity>
           <Ionicons name="pulse-outline" size={25} color="#fff" />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.payButton} onPress={() => console.log("Pay button pressed")}>
+        <Ionicons name="scan" size={32} color="#1C5B99" />
+      </TouchableOpacity>
         <TouchableOpacity>
           <Ionicons name="bar-chart-outline" size={25} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/profile")}>
           <Ionicons name="person-outline" size={25} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -70,13 +75,14 @@ const Homepage = () => {
 
 export default Homepage;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#3D7CC9",
-    paddingTop: 60, // Prevent content from going under the header
-    paddingBottom: 60, // Prevent content from going under bottom navigation
-  },
+export const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#3D7CC9",
+        paddingTop: 60, // Prevent content from going under the header
+        paddingBottom: 60, // Prevent content from going under bottom navigation
+        marginTop: 24,
+      },
   header: {
     position: "absolute",
     top: 0,
@@ -140,7 +146,6 @@ const styles = StyleSheet.create({
   walletRow: {
     flexDirection: "row",
     alignItems: 'center',
-    //justifyContent: 'space-evenly',
     marginBottom: 5,
   },
   walletLabel: {
@@ -210,5 +215,17 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 15,
     borderColor: "#fff",
+  },
+  payButton: {
+    position: "absolute",
+    bottom: 25, // Adjust position over navbar
+    backgroundColor: "#fff", // Blue color for button
+    borderRadius: 36,
+    borderColor: "#1C5B99",
+    padding: 12,
+    elevation: 5, // Shadow for Android
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
   },
 });
