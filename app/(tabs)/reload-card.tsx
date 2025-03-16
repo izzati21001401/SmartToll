@@ -88,9 +88,6 @@ const ReloadCard = () => {
               <TouchableOpacity>
                 <Ionicons name="pulse-outline" size={25} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.payButton} onPress={() => console.log("Pay button pressed")}>
-              <Ionicons name="scan" size={32} color="#1C5B99" />
-            </TouchableOpacity>
               <TouchableOpacity>
                 <Ionicons name="bar-chart-outline" size={25} color="#fff" />
               </TouchableOpacity>
@@ -214,18 +211,6 @@ const styles = StyleSheet.create({
         backgroundColor: "#1C5B99",
         paddingVertical: 15,
         borderRadius: 15,
-      },
-      payButton: {
-        position: "absolute",
-        bottom: 25, // Adjust position over navbar
-        backgroundColor: "#fff", // Blue color for button
-        borderRadius: 36,
-        borderColor: "#1C5B99",
-        padding: 12,
-        elevation: 5, // Shadow for Android
-        shadowColor: "#000",
-        shadowOpacity: 0.2,
-        shadowOffset: { width: 0, height: 2 },
       },
       contentContainer: { 
         padding: 24,
