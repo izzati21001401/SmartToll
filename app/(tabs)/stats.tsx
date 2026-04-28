@@ -65,7 +65,7 @@ const timeframes = {
 // Function to filter and aggregate data based on the selected timeframe
 const aggregateData = (
   data: TollData[],
-  timeframe: keyof typeof timeframes
+  timeframe: keyof typeof timeframes,
 ) => {
   let aggregatedData: TollData[] = [];
   const daysInFrame = timeframes[timeframe];
@@ -185,7 +185,7 @@ export default function StatsPage() {
         const transactionsQuery = query(
           transactionsRef,
           where("numberPlate", "==", licensePlate),
-          orderBy("timestamp", "desc")
+          orderBy("timestamp", "desc"),
         );
         const transactionSnapshot = await getDocs(transactionsQuery);
 
@@ -267,7 +267,7 @@ export default function StatsPage() {
                       {timeframe}
                     </Text>
                   </TouchableOpacity>
-                )
+                ),
               )}
             </View>
           </ScrollView>
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#3D7CC9",
-    paddingTop: 55,
+    paddingTop: 60,
     paddingBottom: 60,
   },
   scrollContainer: {
