@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FlatList,
   View,
@@ -7,53 +7,107 @@ import {
   Modal,
   Button,
   StyleSheet,
+  Image,
+  TextStyle,
 } from "react-native";
 import { format } from "date-fns";
 import { MaterialIcons } from "@expo/vector-icons";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { auth, db } from "@/firebase"; // Ensure correct Firebase initialization
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
 
+// Type definition for a Firestore transaction
 interface Transaction {
   id: string;
-  gate: string;
-  amount: number;
-  date: Date;
+  direction: string;
+  imageURL: string;
+  numberPlate: string;
+  paymentStatus: string;
+  timestamp: FirebaseFirestoreTypes.Timestamp;
+  tollFee: number;
+  tollLocation: string;
+  vehicleClass: string;
 }
 
-const generateDummyData = (count: number): Transaction[] => {
-  const tollGates = [
-    "Gopeng-Ipoh",
-    "Taiping-Kajang",
-    "Bangi-Sepang",
-    "Klang-Seremban",
-    "Petaling-Kajang",
-  ];
-  const transactions: Transaction[] = [];
-  const now = new Date();
+// Function to transform Google Drive URLs into direct image URLs
+const getDirectImageURL = (url: string): string => {
+  const match = url.match(/\/d\/(.*?)\//);
+  return match ? `https://drive.google.com/uc?export=view&id=${match[1]}` : url;
+};
 
-  for (let i = 0; i < count; i++) {
-    const date = new Date(now);
-    date.setDate(now.getDate() - (i % 7));
-    transactions.push({
-      id: `#${Math.floor(Math.random() * 10000000)}`,
-      gate: tollGates[i % tollGates.length],
-      amount: parseFloat((-1 * (Math.random() * 20 + 5)).toFixed(2)),
-      date,
-    });
-  }
-
-  return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+const formatTollLocation = (location: string): string => {
+  return location.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
 };
 
 export default function HistoryPage() {
-  const [transactions] = useState<Transaction[]>(generateDummyData(60));
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [userLicensePlate, setUserLicensePlate] = useState("");
   const [visibleTransactions, setVisibleTransactions] = useState<Transaction[]>(
-    transactions.slice(0, 20)
+    []
   );
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
 
+  // Fetch user's license plate
+  useEffect(() => {
+    const fetchUserLicensePlate = async () => {
+      if (!auth.currentUser) return;
+
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const licensePlate = userSnap.data().licensePlate;
+          setUserLicensePlate(licensePlate);
+        }
+      } catch (error) {
+        console.error("Error fetching user license plate:", error);
+      }
+    };
+
+    fetchUserLicensePlate();
+  }, []);
+
+  // Fetch transactions for the user's car
+  useEffect(() => {
+    if (!userLicensePlate) return; // Wait until we get the license plate
+
+    const fetchTransactions = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "tollRecords"));
+
+        const fetchedTransactions: Transaction[] = querySnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...(doc.data() as Omit<Transaction, "id">),
+          }))
+          .filter((txn) => txn.numberPlate === userLicensePlate); // Filter transactions for this car
+
+        fetchedTransactions.sort(
+          (a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()
+        );
+
+        setTransactions(fetchedTransactions);
+        setVisibleTransactions(fetchedTransactions.slice(0, 20));
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+      }
+    };
+
+    fetchTransactions();
+  }, [userLicensePlate]); // Fetch transactions when the license plate is retrieved
+
+  // Load more transactions when scrolling
   const loadMoreTransactions = useCallback(() => {
     if (visibleTransactions.length < transactions.length) {
       setVisibleTransactions((prev) => [
@@ -63,17 +117,18 @@ export default function HistoryPage() {
     }
   }, [transactions, visibleTransactions]);
 
+  // Group transactions by date
   const groupedTransactions: Record<
     string,
     { transactions: Transaction[]; total: number }
   > = {};
   visibleTransactions.forEach((txn) => {
-    const dateStr = format(txn.date, "dd MMM yyyy");
+    const dateStr = format(txn.timestamp.toDate(), "dd MMM yyyy");
     if (!groupedTransactions[dateStr]) {
       groupedTransactions[dateStr] = { transactions: [], total: 0 };
     }
     groupedTransactions[dateStr].transactions.push(txn);
-    groupedTransactions[dateStr].total += txn.amount;
+    groupedTransactions[dateStr].total += txn.tollFee;
   });
 
   return (
@@ -92,7 +147,7 @@ export default function HistoryPage() {
             <View style={styles.dateHeader}>
               <Text style={styles.dateText}>{date}</Text>
               <Text style={styles.totalAmountText}>
-                Total: {groupedTransactions[date].total.toFixed(2)}
+                Total: RM {groupedTransactions[date].total.toFixed(2)}
               </Text>
             </View>
             {groupedTransactions[date].transactions.map((txn) => (
@@ -104,11 +159,22 @@ export default function HistoryPage() {
                   setModalVisible(true);
                 }}
               >
-                <Text style={styles.gateText}>{txn.gate}</Text>
-                <View style={styles.amountContainer}>
-                  <Text style={styles.amountText}>{txn.amount.toFixed(2)}</Text>
-                  <MaterialIcons name="chevron-right" size={18} color="black" />
+                <Image
+                  source={{ uri: getDirectImageURL(txn.imageURL) }}
+                  style={styles.vehicleImage}
+                />
+                <View style={styles.transactionDetails}>
+                  <Text style={styles.gateText}>
+                    {formatTollLocation(txn.tollLocation)}
+                  </Text>
+                  <Text style={getStatusStyle(txn.paymentStatus)}>
+                    {txn.paymentStatus}
+                  </Text>
+                  <Text style={styles.amountText}>
+                    RM {txn.tollFee.toFixed(2)}
+                  </Text>
                 </View>
+                <MaterialIcons name="chevron-right" size={18} color="black" />
               </TouchableOpacity>
             ))}
           </View>
@@ -116,17 +182,44 @@ export default function HistoryPage() {
       />
       <BottomNav />
 
+      {/* Modal for transaction details */}
       <Modal visible={modalVisible} transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Transaction Details</Text>
             {selectedTransaction && (
               <>
-                <Text>ID: {selectedTransaction.id}</Text>
-                <Text>Gate: {selectedTransaction.gate}</Text>
-                <Text>Amount: {selectedTransaction.amount.toFixed(2)}</Text>
-                <Text>
-                  Date: {format(selectedTransaction.date, "dd MMM yyyy HH:mm")}
+                <Image
+                  source={{
+                    uri: getDirectImageURL(selectedTransaction.imageURL),
+                  }}
+                  style={styles.modalImage}
+                />
+                <Text style={styles.infoText}>
+                  Plate: {selectedTransaction.numberPlate}
+                </Text>
+                <Text style={styles.infoText}>
+                  Direction: {selectedTransaction.direction}
+                </Text>
+                <Text style={styles.infoText}>
+                  Location:{" "}
+                  {formatTollLocation(selectedTransaction.tollLocation)}
+                </Text>
+                <Text style={styles.feeText}>
+                  Fee: RM {selectedTransaction.tollFee.toFixed(2)}
+                </Text>
+                <Text style={styles.infoText}>
+                  Date:{" "}
+                  {format(
+                    selectedTransaction.timestamp.toDate(),
+                    "dd MMM yyyy HH:mm"
+                  )}
+                </Text>
+                <Text style={styles.infoText}>
+                  Vehicle Class: {selectedTransaction.vehicleClass}
+                </Text>
+                <Text style={getStatusStyle(selectedTransaction.paymentStatus)}>
+                  {selectedTransaction.paymentStatus}
                 </Text>
               </>
             )}
@@ -138,20 +231,25 @@ export default function HistoryPage() {
   );
 }
 
+// Status text styling based on payment status
+const getStatusStyle = (status: string): TextStyle => ({
+  fontSize: 14,
+  color: status === "Success" ? "green" : "red",
+  fontWeight: status === "Success" ? "700" : "400",
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#3D7CC9",
-    paddingVertical: 70,
+    paddingTop: 60,
+    paddingBottom: 60,
   },
   pageTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    textAlign: "left",
-    marginBottom: 4,
-    marginTop: 10,
-    paddingHorizontal: 16,
     color: "white",
+    paddingHorizontal: 16,
   },
   card: {
     margin: 10,
@@ -162,10 +260,6 @@ const styles = StyleSheet.create({
   dateHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 10,
-    borderBottomColor: "#ddd",
-    borderBottomWidth: 1,
   },
   dateText: {
     fontSize: 16,
@@ -178,35 +272,57 @@ const styles = StyleSheet.create({
   },
   transactionItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 16,
   },
-  gateText: {
-    fontSize: 14,
+  transactionDetails: {
+    flex: 1,
+    marginLeft: 10,
   },
-  amountContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  gateText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
   },
   amountText: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "bold",
     color: "red",
+  },
+  vehicleImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    objectFit: "cover",
   },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    width: 300,
     backgroundColor: "white",
     padding: 20,
     borderRadius: 10,
-    gap: 10,
+    alignItems: "center",
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
+    marginBottom: 10,
+  },
+  modalImage: {
+    width: 200,
+    height: 100,
+    marginBottom: 10,
+  },
+  infoText: {
+    fontSize: 16,
+    color: "#555",
+  },
+  feeText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "red",
   },
 });

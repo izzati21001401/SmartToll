@@ -19,12 +19,13 @@ const notifications = [
   {
     id: "1",
     header: "Payment Successful",
-    description: "Your toll payment of $5.00 has been processed successfully.",
+    description:
+      "Your toll payment of RM 5.00 has been processed successfully.",
   },
   {
     id: "2",
     header: "Low Balance Alert",
-    description: "Your SmartToll balance is below $10. Please recharge soon.",
+    description: "Your SmartToll balance is below RM 10. Please recharge soon.",
   },
   {
     id: "3",
@@ -165,7 +166,7 @@ const Header: React.FC = () => {
 const styles = StyleSheet.create({
   header: {
     position: "absolute",
-    top: 0,
+    top: -10,
     left: 0,
     right: 0,
     flexDirection: "row",

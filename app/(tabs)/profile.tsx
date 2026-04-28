@@ -1,18 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { getAuth } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/firebase";
 
 const ProfilePage = () => {
-  const [pressedButton, setPressedButton] = useState(null);
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const [licensePlate, setLicensePlate] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLicensePlate = async () => {
+      if (user) {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setLicensePlate(userSnap.data().licensePlate);
+          }
+        } catch (error) {
+          console.error("Error fetching license plate:", error);
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchLicensePlate();
+  }, [user]);
+
   return (
     <View style={styles.container}>
       <Header />
@@ -22,10 +49,25 @@ const ProfilePage = () => {
         <View style={styles.profileContainer}>
           <Ionicons name="person-circle-outline" size={100} color="#555" />
           <View style={styles.profileNameContainer}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="green" />
-            <Text style={styles.profileName}>Sarah Blossom</Text>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#0f0" />
+            <Text style={styles.profileName}>
+              {user?.displayName || "User"}
+            </Text>
           </View>
           <Text style={styles.profileID}>ID: 90001223</Text>
+
+          {/* License Plate Display */}
+          {loading ? (
+            <ActivityIndicator
+              size="small"
+              color="white"
+              style={{ marginTop: 5 }}
+            />
+          ) : (
+            <Text style={styles.profilePlate}>
+              Vehicle Registration Number: {licensePlate || "Not Available"}
+            </Text>
+          )}
         </View>
 
         {/* Payment Section */}
@@ -108,7 +150,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#3D7CC9",
-    paddingVertical: 60,
+    paddingTop: 60,
+    paddingBottom: 60,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -133,6 +176,11 @@ const styles = StyleSheet.create({
   profileID: {
     color: "white",
     fontSize: 16,
+  },
+  profilePlate: {
+    color: "white",
+    fontSize: 16,
+    marginTop: 5,
   },
   section: {
     backgroundColor: "white",

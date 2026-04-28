@@ -21,15 +21,17 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   getAuth,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
+import { db } from "@/firebase"; // Ensure this is correctly initialized
+import { doc, setDoc } from "firebase/firestore";
 
 export default function SignupScreen() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [plateNum, setPlateNum] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const auth = getAuth();
@@ -39,33 +41,45 @@ export default function SignupScreen() {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
-  
+
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      await updateProfile(userCredential.user, { displayName: name });
+      const user = userCredential.user;
+
+      // Set display name in Firebase Auth
+      await updateProfile(user, { displayName: name });
+
+      // Store user details in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        name: name,
+        email: email,
+        licensePlate: plateNum.toUpperCase(), // Assigning the license plate
+      });
+
       await AsyncStorage.setItem("userEmail", email);
-  
-      // Show the modal only on successful signup
+
+      // Show success modal
       setModalVisible(true);
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
         useNativeDriver: true,
       }).start();
-  
+
       // Redirect to login after a delay
       setTimeout(() => {
         setModalVisible(false);
         router.replace("/login");
       }, 2000);
-    } catch (error:any) {
+    } catch (error: any) {
       Alert.alert("Signup Failed", error.message);
     }
   };
+
   return (
     <LinearGradient colors={["#FFFFFF", "#4788C7"]} style={styles.container}>
       <KeyboardAvoidingView
@@ -110,6 +124,15 @@ export default function SignupScreen() {
               secureTextEntry
               value={password}
               onChangeText={setPassword}
+            />
+            <Text style={styles.label}>Vehicle Registration Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Vehicle Plate No."
+              placeholderTextColor="#888"
+              autoCapitalize="characters"
+              value={plateNum}
+              onChangeText={setPlateNum}
             />
             <TouchableOpacity
               style={styles.primaryButton}

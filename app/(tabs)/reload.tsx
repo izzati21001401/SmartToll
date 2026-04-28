@@ -98,18 +98,18 @@ const Reload = () => {
         {selectedTab === "credit" && (
           <>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Card Number</Text>
               <View style={styles.cardRow}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="1234 1234 1234 1234"
-                  placeholderTextColor="#B0B0B0"
-                />
+                <Text style={styles.label}>Card Number</Text>
                 <Image
                   source={require("@/assets/images/credit.png")}
                   style={styles.cardLogo}
                 />
               </View>
+              <TextInput
+                style={styles.input}
+                placeholder="1234 1234 1234 1234"
+                placeholderTextColor="#B0B0B0"
+              />
             </View>
 
             <View style={styles.row}>
@@ -189,6 +189,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#3D7CC9",
     paddingTop: 80,
+    paddingBottom: 60,
   },
   contentContainer: {
     paddingHorizontal: "5%",
@@ -200,6 +201,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 15,
     width: "100%",
+    alignItems: "stretch",
   },
   label: {
     fontSize: 16,
@@ -244,12 +246,14 @@ const styles = StyleSheet.create({
   },
   cardRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
+    justifyContent: "space-between",
   },
   cardLogo: {
-    width: 50,
-    height: 20,
+    width: 150,
+    height: 25,
     marginLeft: 12,
+    marginBottom: 10,
   },
   row: {
     flexDirection: "row",
